@@ -28,7 +28,10 @@ Cookie History Security Parser
     
     As of right now, this tool is very beta, there are a lot of checks and
     balances that need to occur.  As well, I'm planning on adding in the
-    HTTPonly checks and Firefox support down the road.
+    HTTPonly checks and Firefox support down the road.  
+    
+    This tool WILL produce false positives.  In time, I hope to address this in
+    a better manner.
     
     It works like this:
         - Make 2 lists of cookies, those with and without the Secure flag
