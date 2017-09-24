@@ -19,34 +19,57 @@ if __name__ == '__main__':
     ht = history.History(sys.argv[2])
 
     ## Initial list of unsecure and secure cookies
-    ckUnsecured = ck.listRows('host_key', 'secure', '0')
-    ckSecured = ck.listRows('host_key', 'secure', '1')
-    
-    ## Create sets of cookies, secure and unsecure, where the domains match
-    ckUmatch = ck.setMixer(ckSecured, ckUnsecured)
-    ckSmatch = ck.setMixer(ckUnsecured, ckSecured)
-    ck.mSet = ckSmatch.union(ckUmatch)
+    nosecure = ck.listRows('host_key', 'secure', '0')
+    secured = ck.listRows('host_key', 'secure', '1')
 
-    ## Obtain final lists of cookies, sorted and cleaned up
-    ckUlist = ck.dotsetPurge(ckUnsecured)
-    ckSlist = ck.dotsetPurge(ckSecured)
+    ## Initial list of cookies with and without httponly set
+    nojava = ck.listRows('host_key', 'httponly', '1')
+    java = ck.listRows('host_key', 'httponly', '0')
     
+    ## Create sets of cookies, secure and nosecure, where the domains match
+    secureMatch = ck.setMixer(nosecure, secured)
+    unsecureMatch = ck.setMixer(secured, nosecure)
+    ck.mSet = secureMatch.union(unsecureMatch)
+
+    ## Create sets of cookies, java and nojava, where the domains match
+    javaMatch = ck.setMixer(nosecure, secured)
+    nojavaMatch = ck.setMixer(secured, nosecure)
+    ck.mSet = javaMatch.union(nojavaMatch)
+
+    ## Obtain final lists of secure and unsecure cookies; sort and clean up
+    secureList = ck.dotsetPurge(secured)
+    nosecureList = ck.dotsetPurge(nosecure)
+
+    ## Obtain final lists of java and nojava cookies; sort and clean up
+    javaList = ck.dotsetPurge(java)
+    nojavaList = ck.dotsetPurge(nojava)
+
     ## Grab urls from the history db
-    htUnsecured, htSecured = ht.listRows()
+    urlSecure, urlNosecure = ht.listRows()
             
-    ## Find out if any of the ckUlist is in history
-    highSuspected = htSecured.intersection(set(ckUlist))
-    lowSuspected = htUnsecured.intersection(set(ckUlist))
+    ## Determine cookie security
+    highCookie = urlNosecure.intersection(set(nosecureList))
+    lowCookie = urlSecure.intersection(set(nosecureList))
+    highJava = urlNosecure.intersection(set(nojavaList))
+    lowJava = urlSecure.intersection(set(nojavaList))
     
     ## Notate findings
-    with open('highSuspected.lst', 'w') as oFile:
-        for i in highSuspected:
+    with open('highCookie.lst', 'w') as oFile:
+        for i in highCookie:
             oFile.write(i + '\n')
-    with open('lowSuspected.lst', 'w') as oFile:
-        for i in lowSuspected:
+    with open('lowCookie.lst', 'w') as oFile:
+        for i in lowCookie:
             oFile.write(i + '\n')
-    print('\nhighSuspected.lst is a list of sites highly suspected to be vulnerable to session hijacking')
-    print('lowSuspected.lst is a list of sites somewhat suspected to be vulnerable to session hijacking\n')
+    with open('highJava.lst', 'w') as oFile:
+        for i in highJava:
+            oFile.write(i + '\n')
+    with open('lowJava.lst', 'w') as oFile:
+        for i in lowJava:
+            oFile.write(i + '\n')
+    print('\nhighCookie.lst is a list of sites highly suspected to be vulnerable to session hijacking')
+    print('lowCookie.lst is a list of sites somewhat suspected to be vulnerable to session hijacking\n')
+    print('highJava.lst is a list of sites highly suspected to be vulnerable to Cookie-Based XSS')
+    print('lowJava.lst is a list of sites somewhat suspected to be vulnerable to Cookie-Based XSS\n')
 
     ## Cleanup
     ck.con.close()
