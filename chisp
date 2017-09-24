@@ -2,60 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import sqlite3 as lite
-import re, sys
-
-### Start cookies
-def listRows(x, y, z):
-    tSet = set()
-    q = db.execute('SELECT "{0}" FROM `cookies` WHERE "{1}" = ?;'.format(x, y),
-                   (z,))
-    
-    while True:
-        r = q.fetchone()
-        if not r:
-            break
-        else:
-            tSet.add(r[0])
-    return tSet
-
-
-def dotsetPurge(tgtSet):
-    """Return a sorted and set, list of domains with the leading . removed"""
-    tmpList = list(tgtSet - mSet)
-    tmpSet = set()
-    tmpList2 = []
-    for i in tmpList:
-       if re.match('\.', i):
-           
-           ## Add to tmpSet for deletion
-           tmpSet.add(i)
-           
-           ## Add to tmpList2 for addition minus the .
-           tmpList2.append('.'.join(i.split('.')[1:]))
-
-    ## Iterate through set of deletes and remove from tmpList           
-    for i in tmpSet:
-        tmpList.remove(i)
-
-    ## Make final set by combining the lists
-    return sorted(list(set(tmpList + tmpList2)))
-
-
-def setMixer(setX, setY):
-    """Generate a set of mixed from setX"""
-    tmpSet = set()
-    for x in setX:
-        for y in setY:
-#            print ('Checking %s against %s' % (x, y))
-            if x in y:
-#                print('Found %s in %s' % (y, x))
-                tmpSet.add(x)
-    return tmpSet
-### End cookies
-
-
-### Start history
-
+import sys
+from lib import cookies, history
 
 
 if __name__ == '__main__':
@@ -65,66 +13,41 @@ if __name__ == '__main__':
             sys.exit(1)
     except:
         sys.exit(1)
-        
-    ## Cookies begin here
-    con = lite.connect(sys.argv[1])
-    con.text_factory = str
-    db = con.cursor()
     
-    ## Initial list of unsecure
-    uSet = listRows('host_key', 'secure', '0')
+    ## Setup the sql connections
+    ck = cookies.Cookies(sys.argv[1])
+    ht = history.History(sys.argv[2])
+
+    ## Initial list of unsecure and secure cookies
+    ckUnsecured = ck.listRows('host_key', 'secure', '0')
+    ckSecured = ck.listRows('host_key', 'secure', '1')
     
-    ## Initial list of secure
-    sSet = listRows('host_key', 'secure', '1')
+    ## Create sets of cookies, secure and unsecure, where the domains match
+    ckUmatch = ck.setMixer(ckSecured, ckUnsecured)
+    ckSmatch = ck.setMixer(ckUnsecured, ckSecured)
+    ck.mSet = ckSmatch.union(ckUmatch)
+
+    ## Obtain final lists of cookies, sorted and cleaned up
+    ckUlist = ck.dotsetPurge(ckUnsecured)
+    ckSlist = ck.dotsetPurge(ckSecured)
     
-    ## Generate mixed result verifiers, then merge
-    umSet = setMixer(sSet, uSet)
-    smSet = setMixer(uSet, sSet)
-    mSet = smSet.union(umSet)
-
-    ## Obtain final lists, sorted and cleaned up
-    uFinal = dotsetPurge(uSet)
-    sFinal = dotsetPurge(sSet)
-    
-    ## Cleanup
-    con.close()
-
-
-
-
-    ## History begins here
-    con = lite.connect(sys.argv[2])
-    con.text_factory = str
-    db = con.cursor()
-    
-    ## Grab urls
-    q = db.execute('SELECT `url` FROM `urls`;')
-    urlUSet = set()
-    urlSSet = set()
-    while True:
-        r = q.fetchone()
-        if not r:
-            break
-        else:
-            if re.match('https://', r[0]):
-                urlSSet.add(r[0].split('/')[2])
-            else:
-                urlUSet.add(r[0].split('/')[2])
+    ## Grab urls from the history db
+    htUnsecured, htSecured = ht.listRows()
             
-
-    ## Find out if any of the uFinal is in history!
-    vulnSites = urlSSet.intersection(set(uFinal))
-    possibleVulns = urlUSet.intersection(set(uFinal))
+    ## Find out if any of the ckUlist is in history
+    highSuspected = htSecured.intersection(set(ckUlist))
+    lowSuspected = htUnsecured.intersection(set(ckUlist))
     
-    ## Finish
-    with open('vulnSites.lst', 'w') as oFile:
-        for i in vulnSites:
+    ## Notate findings
+    with open('highSuspected.lst', 'w') as oFile:
+        for i in highSuspected:
             oFile.write(i + '\n')
-    with open('possibleVulns.lst', 'w') as oFile:
-        for i in vulnSites:
+    with open('lowSuspected.lst', 'w') as oFile:
+        for i in lowSuspected:
             oFile.write(i + '\n')
-    print('\nvulnSites.lst is a list of sites highly suspected to be vulnerable to session hijacking')
-    print('possibleVulns.lst is a list of sites somewhat suspected to be vulnerable to session hijacking\n')
+    print('\nhighSuspected.lst is a list of sites highly suspected to be vulnerable to session hijacking')
+    print('lowSuspected.lst is a list of sites somewhat suspected to be vulnerable to session hijacking\n')
 
     ## Cleanup
-    con.close()
+    ck.con.close()
+    ht.con.close()
