@@ -28,20 +28,22 @@ Cookie History Security Parser
     
     As of right now, this tool is very beta, there are a lot of checks and
     balances that need to occur.  As well, I'm planning on adding in the
-    HTTPonly checks and Firefox support down the road.  
+    support for Firefox down the road.  
     
     This tool WILL produce false positives.  In time, I hope to address this in
     a better manner.
     
     It works like this:
         - Make 2 lists of cookies, those with and without the Secure flag
+        - Make 2 lists of cookies, those with and without the HTTP Only flag
         - Make 2 lists of URL history, http and https
-        - Compare and contrast the cookies without the secure flag, to the list
-        of domains that have https.
+        - Compare and contrast the cookies without the Secure and HTTP only flags,
+        to the list of domains that have https.
             - Take into account subdomains
             - Take into account mixed usage
                 - http and https on the site depending on the subdomain or view
                 - Secure and Non-Secure cookies
+                - Cookies with and without HTTP Only set
         - Voila, you now have a list of potential vulerable sites to look
         further into for deeper examination security wise
 
