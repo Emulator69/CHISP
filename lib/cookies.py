@@ -24,9 +24,9 @@ class Cookies(object):
         return tSet
 
 
-    def dotsetPurge(self, tgtSet):
+    def dotsetPurge(self, tgtSet, matchSet):
         """Return a sorted and set, list of domains with the leading . removed"""
-        tmpList = list(tgtSet - self.mSet)
+        tmpList = list(tgtSet - matchSet)
         tmpSet = set()
         tmpList2 = []
         for i in tmpList:

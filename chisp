@@ -18,47 +18,47 @@ if __name__ == '__main__':
     ck = cookies.Cookies(sys.argv[1])
     ht = history.History(sys.argv[2])
 
-    ## Initial list of unsecure and secure cookies
-    nosecure = ck.listRows('host_key', 'secure', '0')
-    secured = ck.listRows('host_key', 'secure', '1')
+    ## Initial list of secure and unsecure cookies
+    goodEncryption = ck.listRows('host_key', 'secure', '1')
+    badEncryption = ck.listRows('host_key', 'secure', '0')
 
     ## Initial list of cookies with and without httponly set
-    nojava = ck.listRows('host_key', 'httponly', '1')
-    java = ck.listRows('host_key', 'httponly', '0')
+    goodJava = ck.listRows('host_key', 'httponly', '1')
+    badJava = ck.listRows('host_key', 'httponly', '0')
     
-    ## Create sets of cookies, secure and nosecure, where the domains match
-    secureMatch = ck.setMixer(nosecure, secured)
-    unsecureMatch = ck.setMixer(secured, nosecure)
-    ck.mSet = secureMatch.union(unsecureMatch)
+    ## Create lists and set of cookies, secure and nosecure, where the domains match
+    gencMatch = ck.setMixer(badEncryption, goodEncryption)
+    bencMatch = ck.setMixer(goodEncryption, badEncryption)
+    encSet = gencMatch.union(bencMatch)
 
-    ## Create sets of cookies, java and nojava, where the domains match
-    javaMatch = ck.setMixer(nosecure, secured)
-    nojavaMatch = ck.setMixer(secured, nosecure)
-    ck.mSet = javaMatch.union(nojavaMatch)
+    ## Create lists and set of cookies, java and nojava, where the domains match
+    gjvMatch = ck.setMixer(badJava, goodJava)
+    bjvMatch = ck.setMixer(goodJava, badJava)
+    jvSet = gjvMatch.union(bjvMatch)
 
     ## Obtain final lists of secure and unsecure cookies; sort and clean up
-    secureList = ck.dotsetPurge(secured)
-    nosecureList = ck.dotsetPurge(nosecure)
+    gencList = ck.dotsetPurge(goodEncryption, encSet)
+    bencList = ck.dotsetPurge(badEncryption, encSet)
 
     ## Obtain final lists of java and nojava cookies; sort and clean up
-    javaList = ck.dotsetPurge(java)
-    nojavaList = ck.dotsetPurge(nojava)
+    gjvList = ck.dotsetPurge(goodJava, jvSet)
+    bjvList = ck.dotsetPurge(badJava, jvSet)
 
     ## Grab urls from the history db
     urlSecure, urlNosecure = ht.listRows()
             
     ## Determine cookie security
-    highCookie = urlNosecure.intersection(set(nosecureList))
-    lowCookie = urlSecure.intersection(set(nosecureList))
-    highJava = urlNosecure.intersection(set(nojavaList))
-    lowJava = urlSecure.intersection(set(nojavaList))
+    highEnc = urlNosecure.intersection(set(bencList))
+    lowEnc = urlSecure.intersection(set(bencList))
+    highJava = urlNosecure.intersection(set(bjvList))
+    lowJava = urlSecure.intersection(set(bjvList))
     
     ## Notate findings
-    with open('highCookie.lst', 'w') as oFile:
-        for i in highCookie:
+    with open('highEnc.lst', 'w') as oFile:
+        for i in highEnc:
             oFile.write(i + '\n')
-    with open('lowCookie.lst', 'w') as oFile:
-        for i in lowCookie:
+    with open('lowEnc.lst', 'w') as oFile:
+        for i in lowEnc:
             oFile.write(i + '\n')
     with open('highJava.lst', 'w') as oFile:
         for i in highJava:
@@ -66,10 +66,10 @@ if __name__ == '__main__':
     with open('lowJava.lst', 'w') as oFile:
         for i in lowJava:
             oFile.write(i + '\n')
-    print('\nhighCookie.lst is a list of sites highly suspected to be vulnerable to session hijacking')
-    print('lowCookie.lst is a list of sites somewhat suspected to be vulnerable to session hijacking\n')
-    print('highJava.lst is a list of sites highly suspected to be vulnerable to Cookie-Based XSS')
-    print('lowJava.lst is a list of sites somewhat suspected to be vulnerable to Cookie-Based XSS\n')
+    print('\nhighEnc.lst is a list of domains highly suspected to be vulnerable to session hijacking')
+    print('lowEnc.lst is a list of domains somewhat suspected to be vulnerable to session hijacking\n')
+    print('highJava.lst is a list of domains highly suspected to be vulnerable to Cookie-Based XSS')
+    print('lowJava.lst is a list of domains somewhat suspected to be vulnerable to Cookie-Based XSS\n')
 
     ## Cleanup
     ck.con.close()
